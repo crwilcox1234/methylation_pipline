@@ -100,6 +100,131 @@ C
 
 4. Check symmetric CpGs
 
-  * inputs are the two (c and g) .fa files and the combined 
+  * inputs are the two (c and g) .fa files and the output from symetric CpGs
+
+```
+import sys
+import math
+file=open('list_loop')
+row=file.readlines()
+output1=open('NULL','w')
+for line in row:
+    name=line.split('\n')[0]
+    file1=open('c_'+name+'.fa')
+    file2=open('g_'+name+'.fa')
+    file3=open(name)
+    output=open(name+'.real.txt','w')  
+    row1=file1.readlines()
+    row2=file2.readlines()
+    row3=file3.readlines()
+    c={}
+    g={}
+
+    i=0
+    while i<=len(row1)-1:
+        site=row1[i].split('>')[1].split('\n')[0]
+        if site not in c:
+            c[site]=row1[i+1].split('\n')[0]
+        i=i+2
+    print(len(c))
+    i=0
+    while i<=len(row2)-1:
+        site=row2[i].split('>')[1].split('\n')[0]
+        if site not in g:
+            g[site]=row2[i+1].split('\n')[0]
+        i=i+2
+    print(len(g))
+
+    i=0
+    count=0
+    while i<=len(row3)-1:
+        a=row3[i].split('\t')
+        csite=a[0]+':'+a[1]+'-'+a[2]
+        gsite=a[6]+':'+a[7]+'-'+a[8]
+        if (csite in c) and (gsite in g):
+            output.write(row3[i].split('\n')[0]+'\t'+c[csite]+':'+g[gsite]+'\n')
+            count=count+1
+        i=i+1
+    print(str(count))
+    output.close()
+output1.close()
+```
+  * Script also finds the how many CpGs are methylated on each strand (c vs g), and that the c and g sites match.
+
+### Example of output file (.real.txt):
+
+```
+chr1    778873  778874  0       0       11      chr1    778874  778875  0       0       0       C:gFake C:G
+chr1    778877  778878  0       0       11      chr1    778878  778879  3.7037037037037 1       26      C:G     C:G
+chr1    778880  778881  4.54545454545455        1       21      chr1    778881  778882  0       0       27      C:G     C:G
+chr1    778883  778884  4.54545454545455        1       21      chr1    778884  778885  3.7037037037037 1       26      C:G     C:G
+chr1    778896  778897  4.54545454545455        1       21      chr1    778897  778898  0       0       26      C:G     C:G
+chr1    778911  778912  4.54545454545455        1       21      chr1    778912  778913  0       0       27      C:G     C:G
+chr1    779066  779067  0       0       0       chr1    779067  779068  0       0       21      cFake:G C:G
+chr1    779074  779075  0       0       0       chr1    779075  779076  0       0       21      cFake:G C:G
+chr1    779095  779096  0       0       0       chr1    779096  779097  0       0       26      cFake:G C:G
+chr1    779099  779100  0       0       0       chr1    779100  779101  0       0       25      cFake:G C:G
+```
+
+5. filter unmatch
+
+  * input .real.txt
+  * output .realmatch.txt
+
+```
+import sys
+import math
+file=open('list_real')
+row=file.readlines()
+output1=open('NULL','w')
+for line in row:
+    name=line.split('\n')[0]
+    file=open(name)
+    output=open(name+'.realmatch.txt','w')  
+    row=file.readlines()
+    pair={}
+    unpair={}
+    for line in row:
+        a=line.split('\t')
+        if a[12]==a[13].split('\n')[0]:
+            pair[line]=line
+        else:
+            if 'gFake' in a[12]:
+                a[13]=a[13].split('\n')[0]
+                if (a[13]==a[12].split(':')[0]+':'+'G') or (a[13]==a[12].split(':')[0]+':'+'g'):
+                    unpair[line]=line
+            elif 'cFake' in a[12]:
+                a[13]=a[13].split('\n')[0]
+                if (a[13]=='C'+':'+a[12].split(':')[1]) or (a[13]=='c'+':'+a[12].split(':')[1]):
+                    unpair[line]=line
+    sum=len(pair)+len(unpair)
+    print(name+'pair is'+':'+str(len(pair)))
+    print(name+'unpair is'+':'+str(len(unpair)))
+    print(name+'total is'+':'+str(sum))
+
+    for x in pair:
+        output.write(pair[x].split('\n')[0]+'\n')
+    for x in unpair:
+        output.write(unpair[x].split('\n')[0]+'\n') 
+        
+    output.close()
+output1.close()
+``` 
+
+### Example of output (.realmatch.txt)
+
+```
+chr1    904893  904894  0       0       23      chr1    904894  904895  0       0       15      C:G     C:G
+chr1    904898  904899  14.2857142857143        4       24      chr1    904899  904900  31.8181818181818        7       15      C:G     C:G
+chr1    904912  904913  0       0       24      chr1    904913  904914  0       0       16      C:G     C:G
+chr1    904914  904915  0       0       24      chr1    904915  904916  0       0       16      C:G     C:G
+chr1    904922  904923  0       0       24      chr1    904923  904924  0       0       16      C:G     C:G
+chr1    904932  904933  4.16666666666667        1       23      chr1    904933  904934  6.25    1       15      C:G     C:G
+chr1    904935  904936  0       0       24      chr1    904936  904937  0       0       16      C:G     C:G
+chr1    904938  904939  75      9       3       chr1    904939  904940  6.66666666666667        1       14      C:G     C:G
+```
+
+
+ 
 
 
