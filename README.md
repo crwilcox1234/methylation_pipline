@@ -226,7 +226,75 @@ chr1    904935  904936  0       0       24      chr1    904936  904937  0       
 chr1    904938  904939  75      9       3       chr1    904939  904940  6.66666666666667        1       14      C:G     C:G
 ```
 
-  * **NOTE:** After this script is finished you need to consolidate strands (A and B samples treated separately) using [consolidate_over3.py](consolidate_over3.py) into coverage and ratios in order to make matrices of each sample with relevant information (i.e. coverage and methylation ratio) and CpG sites not found in that sample. Then use bedops --everything or cat to concatinate all of the (A or B) .realmatch.txt files and pipe (|) into uniq -c which prints only uniq regions and counts how many times that region occurred (which can be used to make a histogram of how many CpGs are found in multiple samples).  After making a uniq list of master regions for As and Bs separately, can now run the [premerge_files.py](premerge_files.py) to add CpGs (can also do this with regions or DMRs when you get there) from the master list (either from all As or all Bs) that are not present in individual sample files.  This [premerge_files.py](premerge_files.py) script will output consolide.cov files (these .cov files include all the CpGs found in at least one sample in the group (either A group or B group)).  A following step of the pipline will generate output files with CpGs found only in that individual (found in both A and B for that individual).  
+  * **NOTE:** After this script is finished you need to consolidate strands (A and B samples treated separately) using [consolidate_over3.py](consolidate_over3.py) into coverage and ratios in order to make matrices of each sample with relevant information (i.e. coverage and methylation ratio) and CpG sites not found in that sample. Then use bedops --everything or cat to concatinate all of the (A or B) .realmatch.txt files and pipe (|) into uniq -c which prints only uniq regions and counts how many times that region occurred (which can be used to make a histogram of how many CpGs are found in multiple samples).  After making a uniq list of master regions for As and Bs separately, can now run the [premerge_files.py](premerge_files.py) to add CpGs (can also do this with regions or DMRs when you get there) from the master list (either from all As or all Bs) that are not present in individual sample files.  This [premerge_files.py](premerge_files.py) script will output consolide.cov files (these .cov files include all the CpGs found in at least one sample in the group (either A group or B group)).  A following step of the pipline will generate output files with CpGs found only in that individual (found in both A and B for that individual). Now can run the [merge_sum1.py](merge_sum1.py) or [merge_ratio.py](merge_ratio.py) script using the outputs from premerge. Can also use similar scripts after step 6. 
+
+6. Overlay
+
+  * only outputs CpGs that are in both samples (A and B).
+
+```
+import sys
+file=open('list_realmatch1')
+row=file.readlines()
+i=0
+while i<=len(row)-1:
+    A=row[i].split('\n')[0]
+    B=row[i+1].split('\n')[0]
+    file1=open(A+'_trimmed_bismark_bt2.bedGraph.gz.bismark.zero.symmetricCpG.new.txt.real.txt.realmatch.txt')
+    file2=open(B+'_trimmed_bismark_bt2.bedGraph.gz.bismark.zero.symmetricCpG.new.txt.real.txt.realmatch.txt')
+    row1=file1.readlines()
+    row2=file2.readlines()
+    output1=open(A+'.overlay.consolide.cov','w')
+    output2=open(B+'.overlay.consolide.cov','w')
+
+    dict={}
+    dict1={}
+
+    for line in row1:
+        a=line.split('\t')
+        site=a[0]+'\t'+a[1]+'\t'+a[2]
+        c=int(a[4])+int(a[10])
+        t=int(a[5])+int(a[11])
+        sum1=c+t
+        if (site not in dict) and (sum1>10):
+            dict[site]=site
+    print(len(dict))
+
+    for line in row2:
+        a=line.split('\t')
+        site=a[0]+'\t'+a[1]+'\t'+a[2]
+        c=int(a[4])+int(a[10])
+        t=int(a[5])+int(a[11])
+        sum1=c+t
+        if (site in dict) and (sum1>10):
+            dict1[site]=site
+    print(len(dict1))
+
+    for line in row1:
+        a=line.split('\t')
+        site=a[0]+'\t'+a[1]+'\t'+a[2]
+        c=int(a[4])+int(a[10])
+        t=int(a[5])+int(a[11])
+        sum1=c+t
+        if (site in dict1):
+            ratio=str(100*float(c)/sum1)
+            output1.write(site+'\t'+ratio+'\t'+str(c)+'\t'+str(t)+'\n')
+
+    for line in row2:
+        a=line.split('\t')
+        site=a[0]+'\t'+a[1]+'\t'+a[2]
+        c=int(a[4])+int(a[10])
+        t=int(a[5])+int(a[11])
+        sum1=c+t
+        if (site in dict1):
+            ratio=str(100*float(c)/sum1)
+            output2.write(site+'\t'+ratio+'\t'+str(c)+'\t'+str(t)+'\n')
+    output1.close()
+    output2.close()
+    i=i+2
+```
+
+  * Can now use methylKit to determine DMRs (See Mandy's paper). After determining DMRs make a matrix of common DMRs and filter for DMRs only in 2 or more samples. Now can make heatmaps and PCAs based on DMRs.
  
 
 
