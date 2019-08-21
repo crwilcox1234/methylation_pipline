@@ -1,5 +1,100 @@
 # methylation_pipline
 
+### After demultiplexing and concatinating the lanes together (for Read 1 only:R1) the fastq files have S# via their number on the SampleSheet for demultiplexing.  In order for the pipline to function properly you need to change the name of the fastq file to remove the S# from the name. One way to to this is a while read line script:
+
+```
+while read line
+do
+  mv "$line"_S*_R1.fastq.gz "$line"_R1.fastq.gz
+done < R1_list
+```
+
+### Next we need to trim the reads.  Assuming that each sequencing run will have multiple samples, a python script that makes multiple shell scripts (one for each sample or line in a list file would be helpful:
+
+```
+# this program can generate the batch qsub file for trimG to deal with multiple methylation fastq.gz files.
+
+import sys
+
+infile = open("R1_list")   # the list of the methylation sequence data files
+
+outfile = open("trimG_batch_qsub.sh", "w")
+
+outfile.write("#! /bin/bash\n#$ -N trimG_hg38_qsub\n#$ -q som,sam,bio,pub8i\n#$ -pe openmp 1\n\n")
+
+for line in infile:
+
+	name = line.strip().split('\n')[0]
+
+	out = open(("t_" + name + "trimG_hg38.sh"), "w")
+
+	out.write("#! /bin/bash\n#$ -N t_%strimG_hg38\n#$ -pe openmp 1\n#$ -q sam,som,sam128,bio,pub8i,pub64\n\n"%(name))
+	out.write("module load fastx_toolkit/0.0.14\nmodule load fastqc/0.11.5\n") 
+	out.write("~/software/trimglore/trim_galore --path_to_cutadapt ~/.local/bin/cutadapt \
+		 --fastqc --stringency 5 --rrbs --length 30 --non_directional -o /dfs3/bio/crwilcox/RRBS_TZB/%s \
+		/dfs3/bio/crwilcox/RRBS_TZB/%s/%s_R1.fastq.gz"%(name,name,name))
+	out.close()
+	outfile.write("qsub t_%strimG_hg38.sh\n"%(name))
+
+outfile.close()
+```
+
+### Next we can do the same thing to map the reads using bismark
+
+```
+# this program can generate the batch qsub file for bismark to deal with the trimmed methylation samples.
+
+import sys
+
+infile = open("R1_list")   # the list of the single cell sequence data files
+
+outfile = open("bismark_batch_qsub.sh", "w")
+
+outfile.write("#! /bin/bash\n#$ -N bismark_hg38_qsub\n#$ -q sam,bio,pub8i\n#$ -pe openmp 1\n\n")
+
+for line in infile:
+
+	name = line.strip().split('\n')[0]
+
+	out = open(("t_" + name + "bismark_hg38.sh"), "w")
+
+	out.write("#! /bin/bash\n#$ -N t_%sbismark_hg38\n#$ -pe openmp 8\n#$ -q som,sam,bio,pub64\n\n"%(name))
+	out.write("module load bowtie2/2.2.7\nmodule load samtools/1.0\n") 
+	out.write("~/software/Bismark/bismark -p 8 --sam --non_directional /share/samdata/jiangs2/Dr_TZB/humanRRBS/hg38/ /dfs3/bio/crwilcox/RRBS_TZB/%s/%s_R1_trimmed.fq.gz -o /dfs3/bio/crwilcox/RRBS_TZB/%s/"%(name,name,name))
+	out.close()
+	outfile.write("qsub t_%sbismark_hg38.sh\n"%(name))
+
+outfile.close()
+```
+
+### Finally methylation sites need to be extracted using methyl extractor through bismark. We use a similar python script to make multiple shell scripts for bismark methylation_extractor
+
+```
+# this program can generate the batch qsub file for Bismark_methylation_extractor to deal with the mapped Bismark data.
+
+import sys
+
+infile = open("list")   # the list of A and B samples that need extraction
+
+outfile = open("bismark_extract_batch_qsub.sh", "w")
+
+outfile.write("#! /bin/bash\n#$ -N extract_hg38_qsub\n#$ -q sam,sam128,som,bio,pub8i,pub64\n#$ -pe openmp 1\n\n")
+
+for line in infile:
+
+        name = line.strip().split('\n')[0]
+
+        out = open(("t_" + name + "extract_hg38.sh"), "w")
+
+        out.write("#! /bin/bash\n#$ -N t_%sextract_hg38\n#$ -pe openmp 8\n#$ -q bio,sam,som,pub64,pub8i\n"%(name))
+        out.write("module load bowtie2/2.2.7\nmodule load samtools/1.0\n")
+        out.write("~/software/Bismark/bismark_methylation_extractor --multicore 8 -s --bedGraph --zero_based  /share/samdata/crwilcox/MLSS2pooled/TZB/methylation/Combined_202019/%s/%s_R1_trimmed_bismark_bt2.sam -o /share/samdata/crwilcox/MLSS2pooled/TZB/methylation/Combined_202019/%s/"%(name,name,name))
+        out.close()
+        outfile.write("qsub t_%sextract_hg38.sh\n"%(name))
+
+outfile.close()
+```
+
 ### Before sorting the **.zero.cov** file output from bismark's methyl extractor, you must decide how much coverage you want as a cutoff, we started with a cutoff at 10
 
 ```
