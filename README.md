@@ -168,6 +168,8 @@ chr1    779099  779100  0       0       0       chr1    779100  779101  0       
 
 5. filter unmatch
 
+  * This script counts the number of hemimethylated sites (but does not delete them). Make sure to capture the numbers, the script below only outputs them to the screen. Also, the script removes the labels for hemimethylation (labeled by previous scripts as fake) and replaces them with the correct base.
+
   * input .real.txt
   * output .realmatch.txt
 
@@ -224,7 +226,7 @@ chr1    904935  904936  0       0       24      chr1    904936  904937  0       
 chr1    904938  904939  75      9       3       chr1    904939  904940  6.66666666666667        1       14      C:G     C:G
 ```
 
-
+  * **NOTE:** After this script is finished you need to consolidate strands (A and B samples treated separately) using [consolidate_over3.py](consolidate_over3.py) into coverage and ratios in order to make matrices of each sample with relevant information (i.e. coverage and methylation ratio) and CpG sites not found in that sample. Then use bedops --everything or cat to concatinate all of the (A or B) .realmatch.txt files and pipe (|) into uniq -c which prints only uniq regions and counts how many times that region occurred (which can be used to make a histogram of how many CpGs are found in multiple samples).  After making a uniq list of master regions for As and Bs separately, can now run the [premerge_files.py](premerge_files.py) to add CpGs (can also do this with regions or DMRs when you get there) from the master list (either from all As or all Bs) that are not present in individual sample files.  This [premerge_files.py](premerge_files.py) script will output consolide.cov files (these .cov files include all the CpGs found in at least one sample in the group (either A group or B group)).  A following step of the pipline will generate output files with CpGs found only in that individual (found in both A and B for that individual).  
  
 
 
